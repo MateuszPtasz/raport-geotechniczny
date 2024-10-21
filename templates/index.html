@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Obliczenia wykopu zabezpieczonego Szalunkiem Systemowym</title>
+    <!-- Dodaj tutaj style i skrypty -->
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <!-- jQuery, Popper.js, Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        font-family: 'DejaVu Sans', sans-serif;
+        .plot, .soil-parameters {
+            width: 100%;
+            max-width: 1120px;
+            margin: auto;
+        }
+        .plot img {
+            max-width: 100%;
+            height: auto;
+        }
+        .soil-layer {
+            position: relative;
+        }
+        .remove-layer {
+            cursor: pointer;
+            color: red;
+        }
+        /* Stylizacja tabeli w zakładce Opis Warstw */
+        .tab-pane table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .tab-pane th, .tab-pane td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: center;
+            word-wrap: break-word; /* Dodane zawijanie tekstu */
+        }
+        .tab-pane th {
+            background-color: #f8f9fa;
+        }
+        /* Dodatkowe style dla przycisków */
+        #add-layer, .remove-layer {
+            margin-top: 10px;
+        }
+        /* Ustawienie responsywności dla przycisków */
+        @media (max-width: 576px) {
+            .plot, .soil-parameters {
+                width: 100%;
+            }
+        }
+
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Przycisk Dokumentacja Techniczna -->
+        <button type="button" class="btn btn-info mb-3" data-toggle="modal" data-target="#documentationModal">
+            Dokumentacja Techniczna
+        </button>
+
+        <h1 class="mt-4">Obliczenia wykopu zabezpieczonego szalunkiem systemowym</h1>
+
+        <!-- Sekcja Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <p>
+            Metoda obliczeń: Teoria parcia czynnego.<br>
+            Normy: PN-EN 1997-1:2008 Eurokod 7 – Projektowanie geotechniczne. Część 1: Zasady ogólne.
+        </p>
+
+        <!-- Formularz obliczeń -->
+        <form method="post" onsubmit="return validateForm()">
+            <h2>Metoda obliczeń parcia gruntu:</h2>
+            <div class="form-group">
+                <label for="metoda_parcia">Wybierz metodę:</label>
+                <select name="metoda_parcia" id="metoda_parcia" class="form-control">
+                    <option value="coulomb" {% if form_data and form_data['metoda_parcia'][0] == 'coulomb' %}selected{% endif %}>Teoria parcia czynnego Coulomba</option>
+                    <option value="terzaghi" {% if form_data and form_data['metoda_parcia'][0] == 'terzaghi' %}selected{% endif %}>Metoda Terzaghi-Pecka</option>
+                    <option value="tschebotarioff" {% if form_data and form_data['metoda_parcia'][0] == 'tschebotarioff' %}selected{% endif %}>Metoda Tschebotarioffa</option>
+                    <!-- Możesz dodać więcej metod -->
+                </select>
+            </div>
+
+            <!-- Sekcja dla dodatkowych parametrów metody Coulomba -->
+            <div id="coulomb-params" style="display: none;" class="mb-3">
+                <h3>Dodatkowe parametry dla metody Coulomba:</h3>
+                <div class="form-group">
+                    <label for="delta">Kąt tarcia gruntu o ścianę δ [°]:
+                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt tarcia gruntu względem ściany wykopu - brak danych pozostaw puste." style="cursor: pointer;"></i>
+                    </label>
+                    <input type="number" name="delta" id="delta" class="form-control" step="0.1" min="0" max="90" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="beta">Kąt nachylenia ściany od pionu β [°]:
+                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt nachylenia ściany wykopu względem pionu - brak danych pozostaw puste." style="cursor: pointer;"></i>
+                    </label>
+                    <input type="number" name="beta" id="beta" class="form-control" step="0.1" min="0" max="90" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="theta">Kąt nachylenia terenu θ [°]:
+                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt nachylenia terenu względem poziomu - brak danych pozostaw puste." style="cursor: pointer;"></i>
+                    </label>
+                    <input type="number" name="theta" id="theta" class="form-control" step="0.1" min="0" max="90" value="0">
+                </div>
+            </div>
+
+            <!-- Warstwy gruntu -->
+            <h2>Warstwy gruntu:</h2>
+            <div id="soil-layers">
+                {% if form_data and 'H_i[]' in form_data %}
+                    {% for i in range(form_data['H_i[]']|length) %}
+                    <div class="layer border p-3 mb-3">
+                        <h3>Warstwa {{ loop.index }}</h3>
+                        <div class="form-group">
+                            <label for="H_i_{{ loop.index }}">Grubość warstwy H<sub>i</sub> [m]:
+                                <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Grubość warstwy gruntu w metrach. Musi być większa niż 0." style="cursor: pointer;"></i>
+                            </label>
+                            <input type="number" name="H_i[]" id="H_i_{{ loop.index }}" class="form-control" step="0.1" min="0.1" required value="{{ form_data['H_i[]'][i] }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="gamma_i_{{ loop.index }}">Ciężar objętościowy γ<sub>i</sub> [kN/m³]:
+                                <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Ciężar objętościowy gruntu w jednostkach kN/m³. Musi być większy niż 0." style="cursor: pointer;"></i>
+                            </label>
+                            <input type="number" name="gamma_i[]" id="gamma_i_{{ loop.index }}" class="form-control" step="0.1" min="0.1" required value="{{ form_data['gamma_i[]'][i] }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="gamma_sat_i_{{ loop.index }}">Ciężar objętościowy nasycony γ<sub>sat,i</sub> [kN/m³] (jeśli nieznany, wpisz Ciężar objętościowy):
+                                <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Ciężar objętościowy nasycony gruntu w jednostkach kN/m³. Jeśli nieznany, można pozostawić pole puste." style="cursor: pointer;"></i>
+                            </label>
+                            <input type="number" name="gamma_sat_i[]" id="gamma_sat_i_{{ loop.index }}" class="form-control" step="0.1" min="0.1" value="{{ form_data['gamma_sat_i[]'][i] }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="phi_i_{{ loop.index }}">Kąt tarcia wewnętrznego φ<sub>i</sub> [°]:
+                                <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt tarcia wewnętrznego gruntu w stopniach. Musi być między 0 a 90 stopni." style="cursor: pointer;"></i>
+                            </label>
+                            <input type="number" name="phi_i[]" id="phi_i_{{ loop.index }}" class="form-control" step="0.1" min="0" max="90" required value="{{ form_data['phi_i[]'][i] }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="c_i_{{ loop.index }}">Spójność c<sub>i</sub> [kPa]:
+                                <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Spójność gruntu w jednostkach kPa. Nie może być ujemna." style="cursor: pointer;"></i>
+                            </label>
+                            <input type="number" name="c_i[]" id="c_i_{{ loop.index }}" class="form-control" step="0.1" min="0" required value="{{ form_data['c_i[]'][i] }}">
+                        </div>
+                        <button type="button" class="btn btn-danger btn-sm remove-layer">Usuń warstwę</button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <!-- Domyślna warstwa, jeśli brak danych -->
+                <div class="layer border p-3 mb-3">
+                    <h3>Warstwa 1</h3>
+                    <div class="form-group">
+                        <label for="H_i_1">Grubość warstwy H<sub>i</sub> [m]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Grubość warstwy gruntu w metrach. Musi być większa niż 0." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="H_i[]" id="H_i_1" class="form-control" step="0.1" min="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="gamma_i_1">Ciężar objętościowy γ<sub>i</sub> [kN/m³]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Ciężar objętościowy gruntu w jednostkach kN/m³. Musi być większy niż 0." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="gamma_i[]" id="gamma_i_1" class="form-control" step="0.1" min="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="gamma_sat_i_1">Ciężar objętościowy nasycony γ<sub>sat,i</sub> [kN/m³] (jeśli nieznany, wpisz Ciężar objętościowy):
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Ciężar objętościowy nasycony gruntu w jednostkach kN/m³. Jeśli nieznany, można pozostawić pole puste." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="gamma_sat_i[]" id="gamma_sat_i_1" class="form-control" step="0.1" min="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="phi_i_1">Kąt tarcia wewnętrznego φ<sub>i</sub> [°]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt tarcia wewnętrznego gruntu w stopniach. Musi być między 0 a 90 stopni." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="phi_i[]" id="phi_i_1" class="form-control" step="0.1" min="0" max="90" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="c_i_1">Spójność c<sub>i</sub> [kPa]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Spójność gruntu w jednostkach kPa. Nie może być ujemna." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="c_i[]" id="c_i_1" class="form-control" step="0.1" min="0" value="0" required>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-sm remove-layer">Usuń warstwę</button>
+                </div>
+                {% endif %}
+            </div>
+
+            <button type="button" id="add-layer" class="btn btn-secondary">Dodaj warstwę</button>
+
+            <!-- Warunki gruntowo-wodne -->
+            <h2 class="mt-4">Warunki gruntowo-wodne:</h2>
+            <div class="form-group">
+                <label for="zw">Poziom wody gruntowej z<sub>w</sub> [m] od powierzchni terenu:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Poziom wody gruntowej mierzony od powierzchni terenu w metrach." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="zw" id="zw" class="form-control" step="0.1" min="0" required value="{{ form_data['zw'][0] if form_data and 'zw' in form_data else '' }}">
+            </div>
+
+            <!-- Parametry do obliczeń osiadania -->
+            <h2 class="mt-4">Parametry do obliczeń osiadania:</h2>
+            <div class="form-group">
+                <label for="e0">Początkowy współczynnik porowatości e<sub>0</sub>:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Jeśli brak danych, pozostaw pole puste." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="e0" id="e0" class="form-control" step="0.01" min="0" value="{{ form_data['e0'][0] if form_data and 'e0' in form_data else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="Cc">Współczynnik konsolidacji C<sub>c</sub>:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Jeśli brak danych, pozostaw pole puste." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="Cc" id="Cc" class="form-control" step="0.01" min="0" value="{{ form_data['Cc'][0] if form_data and 'Cc' in form_data else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="H0">Grubość warstwy podlegającej konsolidacji H<sub>0</sub> [m]:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Jeśli brak danych, pozostaw pole puste." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="H0" id="H0" class="form-control" step="0.1" min="0.1" value="{{ form_data['H0'][0] if form_data and 'H0' in form_data else '' }}">
+            </div>
+
+            <!-- Parametry konstrukcyjne -->
+            <h2 class="mt-4">Parametry konstrukcyjne:</h2>
+            <div class="form-group">
+                <label for="B">Szerokość wykopu B [m]:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content='<a href="https://example.com/zdjecie_pogladowe.jpg" target="_blank">Zobacz zdjęcie poglądowe</a>' style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="B" id="B" class="form-control" step="0.1" min="0.1" required value="{{ form_data['B'][0] if form_data and 'B' in form_data else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="obudowa">Typ obudowy:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Wybierz odpowiedni typ obudowy wykopu." style="cursor: pointer;"></i>
+                </label>
+                <select name="obudowa" id="obudowa" class="form-control">
+                    <option value="szalunek_slupowy_ciezki" {% if form_data and form_data['obudowa'][0] == 'szalunek_slupowy_ciezki' %}selected{% endif %}>Szalunek słupowy ciężki</option>
+                    <option value="szalunek_slupowy_lekki" {% if form_data and form_data['obudowa'][0] == 'szalunek_slupowy_lekki' %}selected{% endif %}>Szalunek słupowy lekki</option>
+                    <option value="szalunek_scianowy" {% if form_data and form_data['obudowa'][0] == 'szalunek_scianowy' %}selected{% endif %}>Berlinka</option>
+                    <!-- Dodaj inne typy obudów w razie potrzeby -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="h_r">Wysokość montażu rozpory h<sub>r</sub> [m]:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Wysokość montażu rozporów szalunku w metrach." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="h_r" id="h_r" class="form-control" step="0.1" min="0" required value="{{ form_data['h_r'][0] if form_data and 'h_r' in form_data else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="L_b">Długość blatu szalunkowego L<sub>b</sub> [m]:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content='<a href="https://example.com/zdjecie_lb.jpg" target="_blank">Zobacz zdjęcie poglądowe</a>' style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="L_b" id="L_b" class="form-control" step="0.1" min="0.1" required value="{{ form_data['L_b'][0] if form_data and 'L_b' in form_data else '' }}">
+            </div>
+
+            <!-- Kotwienie blatu szalunkowego -->
+            <h2 class="mt-4">Kotwienie blatu szalunkowego:</h2>
+            <div class="form-group">
+                <label for="kotwienie">Czy blat szalunkowy jest zakotwiony?
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Zakotwienie poniżej dna wykopu zapewnia stabilność szalunku." style="cursor: pointer;"></i>
+                </label>
+                <select name="kotwienie" id="kotwienie" class="form-control">
+                    <option value="nie" {% if form_data and form_data['kotwienie'][0] == 'nie' %}selected{% endif %}>Nie</option>
+                    <option value="tak" {% if form_data and form_data['kotwienie'][0] == 'tak' %}selected{% endif %}>Tak</option>
+                </select>
+            </div>
+            <div class="form-group" id="liczba-kotwien-label" style="display: none;">
+                <label for="liczba_kotwien">Liczba kotwień:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Wprowadź liczbę kotwień używanych do zakotwienia szalunku." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="liczba_kotwien" id="liczba_kotwien" class="form-control" step="1" min="1" value="{{ form_data['liczba_kotwien'][0] if form_data and 'liczba_kotwien' in form_data else '' }}">
+            </div>
+
+
+            <!-- Obciążenia zewnętrzne -->
+            <h2 class="mt-4">Obciążenia zewnętrzne:</h2>
+            <div class="form-group">
+                <label for="q">Wielkość obciążenia q [kPa]:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Obciążenie występujące w obrębie obudowy szalunku." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="q" id="q" class="form-control" step="0.1" min="0" required value="{{ form_data['q'][0] if form_data and 'q' in form_data else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="d">Odległość od krawędzi wykopu d [m]:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Odległość od krawędzi wykopu w metrach." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="d" id="d" class="form-control" step="0.1" min="0" required value="{{ form_data['d'][0] if form_data and 'd' in form_data else '' }}">
+            </div>
+
+            <!-- Parametry materiałowe -->
+            <h2 class="mt-4">Parametry materiałowe:</h2>
+            <div class="form-group">
+                <label for="f_y">Granica plastyczności stali f<sub>y</sub> [MPa]:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Granica plastyczności stali w megapaskalach." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="f_y" id="f_y" class="form-control" step="1" min="0" value="{{ form_data['f_y'][0] if form_data and 'f_y' in form_data else '355' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="gamma_M">Współczynnik bezpieczeństwa materiału γ<sub>M</sub>:
+                    <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Współczynnik bezpieczeństwa stosowany w obliczeniach." style="cursor: pointer;"></i>
+                </label>
+                <input type="number" name="gamma_M" id="gamma_M" class="form-control" step="0.1" min="0.1" value="{{ form_data['gamma_M'][0] if form_data and 'gamma_M' in form_data else '1.0' }}" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Oblicz</button>
+        </form>
+
+        <!-- Przyciski do pobrania raportu -->
+        {% if result %}
+        <div class="result mt-4">
+            <h2>Wyniki:</h2>
+            <p>Łączne jednostkowe parcie gruntu σₕ: {{ result.sigma_h_total }} kPa</p>
+            <p>Maksymalny moment zginający M_max: {{ result.M_max }} kNm</p>
+            <p>Wskaźnik wytrzymałości przekroju W: {{ result.W }} m³</p>
+            <p>
+                Warunek wytrzymałości na zginanie:
+                {% if result.is_safe %}
+                    <span style="color:green;">Spełniony</span>
+                {% else %}
+                    <span style="color:red;">Niespełniony</span>
+                {% endif %}
+            </p>
+            <p>Osiadanie gruntu spowodowane odwodnieniem: {{ result.settlement }} mm</p>
+
+            <!-- Przyciski do pobrania raportu -->
+            
+            <form action="{{ url_for('download_report') }}" method="post">
+                <input type="hidden" name="result" value='{{ result | tojson | safe }}'>
+                <input type="hidden" name="soil_parameters" value='{{ soil_parameters | tojson | safe }}'>
+                {% if plot_base64 %}
+                    <input type="hidden" name="plot_base64" value="{{ plot_base64 }}">
+                {% endif %}
+                {% if cross_section_plot_url %}
+                    <input type="hidden" name="cross_section_plot_url" value="{{ cross_section_plot_url }}">
+                {% endif %}
+                <!-- Dwa przyciski: z znakiem wodnym i bez -->
+                <button type="submit" name="watermark" value="yes" class="btn btn-secondary">Pobierz Raport PDF z Znakiem Wodnym</button>
+                <button type="button" id="download-no-watermark" class="btn btn-secondary">Pobierz Raport PDF bez Znaku Wodnego</button>
+            </form>
+
+            
+            
+
+           <!-- Modal do wprowadzania hasła -->
+           <div class="modal fade" id="passwordModal" tabindex="-1" role="dialog" aria-labelledby="passwordModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <form id="passwordForm" action="{{ url_for('download_report') }}" method="post">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="passwordModalLabel">Wprowadź hasło</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" name="result" value='{{ result | tojson }}'>
+                                
+                                <input type="hidden" name="cross_section_plot_url" value="{{ cross_section_plot_url }}">
+                                <input type="hidden" name="soil_parameters" value='{{ soil_parameters | tojson }}'>
+                                {% if plot_base64 %}
+                                    <input type="hidden" name="plot_base64" value="{{ plot_base64 }}">
+                                {% endif %}
+                                <input type="hidden" name="watermark" value="no">
+                                <div class="form-group">
+                                    <label for="password">Hasło:</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
+                                <button type="submit" class="btn btn-primary">Generuj Raport bez Znaku Wodnego</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>    
+        </div>
+        {% endif %}
+
+        <!-- Modal Dokumentacji Technicznej -->
+        <div class="modal fade" id="documentationModal" tabindex="-1" role="dialog" aria-labelledby="documentationModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Dokumentacja Techniczna</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Nav tabs -->
+                        <ul class="nav nav-tabs" id="documentationTab" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="norms-tab" data-toggle="tab" href="#norms" role="tab" aria-controls="norms" aria-selected="true">Stosowane Normy</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="layers-tab" data-toggle="tab" href="#layers-doc" role="tab" aria-controls="layers-doc" aria-selected="false">Opis Warstw</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="methods-tab" data-toggle="tab" href="#methods" role="tab" aria-controls="methods" aria-selected="false">Opis Metod Obliczeniowych</a>
+                            </li>
+                        </ul>
+
+                        <!-- Tab panes -->
+                        <div class="tab-content mt-3">
+                            <div class="tab-pane fade show active" id="norms" role="tabpanel" aria-labelledby="norms-tab">
+                                <!-- Zawartość zakładki Stosowane Normy -->
+                                <h4>Stosowane Normy</h4>
+                                <p>W obliczeniach wytrzymałości wykopów zabezpieczonych szalunkiem systemowym stosujemy następujące normy:</p>
+                                <ul>
+                                    <li><strong>PN-EN 1997-1:2008</strong> Eurokod 7 – Projektowanie geotechniczne. Część 1: Zasady ogólne.</li>
+                                    <li><strong>PN-EN 1992-1-1:2008</strong> Eurokod 2 – Projektowanie konstrukcji betonowych. Część 1-1: Reguły ogólne i reguły dla budynków.</li>
+                                    <li><strong>PN-EN 1993-1-1:2005</strong> Eurokod 3 – Projektowanie konstrukcji stalowych. Część 1-1: Reguły ogólne i reguły dla budynków.</li>
+                                    <li><strong>PN-B-03155:2011</strong> Projektowanie i wykonawstwo konstrukcji betonowych.</li>
+                                    <li><strong>PN-B-03020:1981</strong> Metody obliczeń wytrzymałościowych gruntu.</li>
+                                </ul>
+                                <p>Normy te zapewniają odpowiednie wytyczne dotyczące projektowania i obliczeń geotechnicznych, gwarantując bezpieczeństwo i stabilność wykopów.</p>
+                            </div>
+                            <div class="tab-pane fade" id="layers-doc" role="tabpanel" aria-labelledby="layers-tab">
+                                <!-- Zawartość zakładki Opis Warstw -->
+                                <h4>Opis Warstw</h4>
+                                <p>Warstwy gruntu są definiowane zgodnie z normą <strong>PN-B-03020:1981</strong> i służą do precyzyjnych obliczeń wytrzymałości wykopów. Poniżej znajduje się opis poszczególnych typów gruntów wraz z ich charakterystycznymi właściwościami:</p>
+
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Typ Gruntu</th>
+                                            <th>Opis</th>
+                                            <th>Kąt Tarcia wewnętrznego φ<sub>i</sub> [°]</th>
+                                            <th>Ciężar objętościowy γ<sub>i</sub> [kN/m³]</th>
+                                            <th>Ciężar objętościowy nasycony γ<sub>sat,i</sub> [kN/m³]</th>
+                                            <th>Kohezja c<sub>i</sub> [kPa]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Piasek</td>
+                                            <td>Grunt niekohesyjny, dobrze przepuszczalny. Często stosowany w budownictwie ze względu na swoją stabilność i łatwość obróbki.</td>
+                                            <td>30 - 40</td>
+                                            <td>18 - 22</td>
+                                            <td>19 - 23</td>
+                                            <td>0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Piasek Średni</td>
+                                            <td>Typ piasku o umiarkowanej przepuszczalności i wyższej gęstości niż piasek drobny. Zapewnia dobrą nośność i stabilność.</td>
+                                            <td>32 - 38</td>
+                                            <td>19 - 21</td>
+                                            <td>20 - 22</td>
+                                            <td>0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Piasek Gruby</td>
+                                            <td>Grunt o większych ziarnach, mniej przepuszczalny. Stosowany w miejscach, gdzie wymagana jest większa nośność.</td>
+                                            <td>28 - 35</td>
+                                            <td>20 - 24</td>
+                                            <td>21 - 25</td>
+                                            <td>0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Muł</td>
+                                            <td>Grunt o małych ziarnach, bardzo przepuszczalny. Charakteryzuje się niską nośnością i dużą podatnością na odkształcenia.</td>
+                                            <td>25 - 35</td>
+                                            <td>16 - 20</td>
+                                            <td>17 - 21</td>
+                                            <td>0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Glina</td>
+                                            <td>Grunt kohesyjny o wysokiej spójności. Charakteryzuje się niską przepuszczalnością i dużą podatnością na odkształcenia pod obciążeniem.</td>
+                                            <td>20 - 35</td>
+                                            <td>17 - 20</td>
+                                            <td>17 - 20</td>
+                                            <td>10 - 50</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Grunty Kwiatkowe</td>
+                                            <td>Grunty zawierające ziarniste materiały, takie jak żwir czy kamienie. Wysoka przepuszczalność i dobra nośność.</td>
+                                            <td>35 - 45</td>
+                                            <td>22 - 26</td>
+                                            <td>23 - 27</td>
+                                            <td>0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Organiczne Grunty</td>
+                                            <td>Grunty zawierające materię organiczną, charakteryzujące się niską nośnością i dużą podatnością na odkształcenia.</td>
+                                            <td>15 - 25</td>
+                                            <td>10 - 15</td>
+                                            <td>10 - 15</td>
+                                            <td>30 - 150</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <p>Poprawne zdefiniowanie tych parametrów umożliwia precyzyjne modelowanie warunków gruntowych i dokładne obliczenia wytrzymałości wykopów. Wybór odpowiedniego typu gruntu oraz jego właściwości jest kluczowy dla zapewnienia bezpieczeństwa i stabilności konstrukcji szalunkowej.</p>
+                            </div>
+                            <div class="tab-pane fade" id="methods" role="tabpanel" aria-labelledby="methods-tab">
+                                <!-- Zawartość zakładki Opis Metod Obliczeniowych -->
+                                <h4>Opis Metod Obliczeniowych</h4>
+                                <p>Aplikacja wykorzystuje różne metody obliczeniowe do określenia wytrzymałości wykopów zabezpieczonych szalunkiem. Poniżej znajdują się opisy używanych metod:</p>
+                                <ul>
+                                    <li><strong>Teoria parcia czynnego Coulomba</strong>: Metoda Coulomba uwzględnia zarówno kąt tarcia gruntu o ścianę (δ), jak i kąt nachylenia terenu (θ). Jest to bardziej zaawansowana metoda, która pozwala na dokładniejsze modelowanie warunków terenowych.</li>
+                                    <li><strong>Metoda Terzaghiego-Pecka</strong>: Jest to adaptacja teorii parcia czynnego, która uwzględnia korekty dla gruntów spoistych. Metoda ta jest szczególnie przydatna w przypadkach gruntów o wysokiej spójności.</li>
+                                    <li><strong>Metoda Tschebotarioffa</strong>: Ta metoda uwzględnia dodatkowe czynniki wpływające na parcie gruntu, takie jak współczynnik redukcyjny związany z odległością od obciążenia zewnętrznego.</li>
+                                    <li><strong>Metoda Rankine'a</strong>: Domyślna metoda obliczeń parcia czynnego, która jest uproszczoną wersją teorii Coulomba, zakładającą, że teren jest poziomy i że nie ma tarcia między gruntem a ścianą wykopu.</li>
+                                </ul>
+                                <p>Wybór odpowiedniej metody zależy od specyfiki projektu i warunków gruntowych. Aplikacja pozwala na wybór metody, która najlepiej odpowiada realnym warunkom terenowym, co umożliwia precyzyjne i bezpieczne projektowanie wykopów.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Zamknij</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Szkic warstw zaprojektowanych -->
+        <div class="row">
+            <div class="col-md-6 plot">
+                <h2>Przekrój poprzeczny przez wykop:</h2>
+                {% if cross_section_plot_url %}
+                    <img src="data:image/png;base64,{{ cross_section_plot_url }}" class="img-fluid" alt="Przekrój poprzeczny">
+                {% else %}
+                    <p>Brak przekroju poprzecznego.</p>
+                {% endif %}
+            </div>
+            <div class="col-md-6 soil-parameters">
+                <h2>Parametry gruntów:</h2>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                        <tr>
+                            <th>Warstwa</th>
+                            <th>H<sub>i</sub> [m]</th>
+                            <th>γ<sub>i</sub> [kN/m³]</th>
+                            <th>γ_sat,i [kN/m³]</th>
+                            <th>φ<sub>i</sub> [°]</th>
+                            <th>c<sub>i</sub> [kPa]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for soil in soil_parameters %}
+                        <tr>
+                            <td>{{ soil.layer }}</td>
+                            <td>{{ soil.H_i }}</td>
+                            <td>{{ soil.gamma_i }}</td>
+                            <td>{{ soil.gamma_sat_i }}</td>
+                            <td>{{ soil.phi_i }}</td>
+                            <td>{{ soil.c_i }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interaktywny wykres parcia gruntu -->
+        {% if graphJSON %}
+        <div class="plot mt-4">
+            <h2>Wykres rozkładu parcia gruntu:</h2>
+            <div id="pressure-plot" style="width: 100%; height: 600px;"></div> <!-- Ustawiono wysokość -->
+            <script>
+                var plot_data = {{ graphJSON | safe }};
+                Plotly.newPlot('pressure-plot', plot_data.data, plot_data.layout, {responsive: true});
+            </script>
+        </div>
+        {% endif %}
+
+        <div class="plot">
+        {% if plot_base64 %}
+            <img src="data:image/png;base64,{{ plot_base64 }}" alt="Wykres rozkładu parcia gruntu" class="img-fluid">
+        {% else %}
+            <p>Brak wykresu parcia gruntu.</p>
+        {% endif %}
+        </div>
+
+        
+
+
+        {% if error %}
+        <div class="error mt-4" style="color: red;">
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Skrypt do dodawania warstw -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var kotwienieSelect = document.getElementById('kotwienie');
+                var liczbaKotwienLabel = document.getElementById('liczba-kotwien-label');
+                var liczbaKotwienInput = document.getElementById('liczba_kotwien');
+
+                function toggleLiczbaKotwien() {
+                    if (kotwienieSelect.value === 'tak') {
+                        liczbaKotwienLabel.style.display = 'block';
+                        liczbaKotwienInput.disabled = false;
+                        liczbaKotwienInput.required = true;
+                    } else {
+                        liczbaKotwienLabel.style.display = 'none';
+                        liczbaKotwienInput.disabled = true;
+                        liczbaKotwienInput.required = false;
+                    }
+                }
+                kotwienieSelect.addEventListener('change', toggleLiczbaKotwien);
+                toggleLiczbaKotwien();  // Wywołaj funkcję przy ładowaniu strony
+
+                var metodaParciaSelect = document.getElementById('metoda_parcia');
+                var coulombParamsDiv = document.getElementById('coulomb-params');
+
+                function toggleCoulombParams() {
+                    if (metodaParciaSelect.value === 'coulomb') {
+                        coulombParamsDiv.style.display = 'block';
+                    } else {
+                        coulombParamsDiv.style.display = 'none';
+                    }
+                }
+
+                metodaParciaSelect.addEventListener('change', toggleCoulombParams);
+                toggleCoulombParams();  // Wywołaj funkcję przy ładowaniu strony
+            });
+
+            $(document).ready(function(){
+                var layerCount = {{ form_data['H_i[]']|length if form_data and 'H_i[]' in form_data else 1 }};
+                $('#add-layer').click(function(){
+                    layerCount++;
+                    var layerHtml = `
+                <div class="layer border p-3 mb-3">
+                   <h3>Warstwa ${layerCount}</h3>
+                    <div class="form-group">
+                        <label>Grubość warstwy H<sub>i</sub> [m]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Grubość warstwy gruntu w metrach. Musi być większa niż 0." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="H_i[]" class="form-control" step="0.1" min="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ciężar objętościowy γ<sub>i</sub> [kN/m³]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Ciężar objętościowy gruntu w jednostkach kN/m³. Musi być większy niż 0." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="gamma_i[]" class="form-control" step="0.1" min="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ciężar objętościowy nasycony γ<sub>sat,i</sub> [kN/m³]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Ciężar objętościowy nasycony gruntu w jednostkach kN/m³. Jeśli nieznany, można pozostawić pole puste." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="gamma_sat_i[]" class="form-control" step="0.1" min="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Kąt tarcia wewnętrznego φ<sub>i</sub> [°]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt tarcia wewnętrznego gruntu w stopniach. Musi być między 0 a 90 stopni." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="phi_i[]" class="form-control" step="0.1" min="0" max="90" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Spójność c<sub>i</sub> [kPa]:
+                            <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Spójność gruntu w jednostkach kPa. Nie może być ujemna." style="cursor: pointer;"></i>
+                        </label>
+                        <input type="number" name="c_i[]" class="form-control" step="0.1" min="0" value="0" required>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-sm remove-layer">Usuń warstwę</button>
+                </div>
+                    `;
+                    $('#soil-layers').append(layerHtml);
+                });
+
+                // Obsługa usuwania warstwy
+                $('#soil-layers').on('click', '.remove-layer', function(){
+                    $(this).closest('.layer').remove();
+                    layerCount--;
+                    updateLayerHeaders();
+                });
+
+                function updateLayerHeaders() {
+                    $('#soil-layers .layer').each(function(index){
+                        $(this).find('h3').text('Warstwa ' + (index + 1));
+                    });
+                }
+            });
+        </script>
+
+        <!-- Skrypt do obsługi modalu -->
+
+        <script>
+            $(document).ready(function(){
+                $('#download-no-watermark').click(function(){
+                    $('#passwordModal').modal('show');
+                });
+
+                // Initialize all popovers
+                $('[data-toggle="popover"]').popover({
+                    html: true,
+                    trigger: 'hover'
+                });
+            });
+
+        </script>
+
+        <!-- Walidacja formularza -->
+        <script>
+            function validateForm() {
+                // Pobierz wszystkie warstwy
+                var layers = document.querySelectorAll('.layer');
+                for (var i = 0; i < layers.length; i++) {
+                    var layer = layers[i];
+                    var H_i = parseFloat(layer.querySelector('input[name="H_i[]"]').value);
+                    var gamma_i = parseFloat(layer.querySelector('input[name="gamma_i[]"]').value);
+                    var phi_i = parseFloat(layer.querySelector('input[name="phi_i[]"]').value);
+                    var c_i = parseFloat(layer.querySelector('input[name="c_i[]"]').value);
+
+                    if (H_i <= 0 || isNaN(H_i)) {
+                        alert('Grubość warstwy H_i musi być większa niż 0.');
+                        return false;
+                    }
+                    if (gamma_i <= 0 || isNaN(gamma_i)) {
+                        alert('Ciężar objętościowy γ_i musi być większy niż 0.');
+                        return false;
+                    }
+                    if (phi_i < 0 || phi_i > 90 || isNaN(phi_i)) {
+                        alert('Kąt tarcia wewnętrznego φ_i musi być między 0 a 90 stopni.');
+                        return false;
+                    }
+                    if (c_i < 0 || isNaN(c_i)) {
+                        alert('Spójność c_i nie może być ujemna.');
+                        return false;
+                    }
+                }
+                // Walidacja innych pól
+                var zw = document.getElementById('zw').value;
+                if (zw === '' || isNaN(parseFloat(zw))) {
+                    alert('Proszę podać poprawny poziom wody gruntowej zw.');
+                    return false;
+                }
+                // Możesz dodać walidację dla innych pól według potrzeb
+                return true;
+            }
+        </script>
+</body>
+</html>

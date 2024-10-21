@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Raport</title>
+    <style>
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('fonts/DejaVuSans.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('fonts/DejaVuSans-Bold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+        }
+        /* Dodatkowe style */
+    </style>
+</head>
+<body>
+    <h1>Raport Projektu</h1>
+    <h2>Informacje Ogólne</h2>
+    <p>Normy Użyte: {{ result.norms_used }}</p>
+    <p>Metoda Obliczeń: {{ result.calculation_method }}</p>
+    <p>Współczynnik Bezpieczeństwa: {{ result.safety_factor }}</p>
+    
+    <h2>Parametry Obudowy</h2>
+    <ul>
+        <li>Typ Obudowy: {{ result.shoring_parameters.obudowa }}</li>
+        <li>Wysokość Montażu Rozpory h<sub>r</sub>: {{ result.shoring_parameters.h_r }} m</li>
+        <li>Długość Blatu Szalunkowego L<sub>b</sub>: {{ result.shoring_parameters.L_b }} m</li>
+        <li>Granica Plastyczności Stali f<sub>y</sub>: {{ result.shoring_parameters.f_y }} MPa</li>
+    </ul>
+    
+    <h2>Wyniki Obliczeń</h2>
+    <p>Całkowite Parcie Gruntu σ<sub>h</sub>: {{ result.sigma_h_total }} kPa</p>
+    <p>Moment Maksymalny M<sub>max</sub>: {{ result.M_max }} kNm</p>
+    <p>Wsparcie Wytrzymałości Przekroju W: {{ result.W }}</p>
+    <p>Bezpieczeństwo Konstrukcji: {% if result.is_safe %}Bezpieczne{% else %}Niezabezpieczone{% endif %}</p>
+    {% if result.settlement %}
+        <p>Osiadanie: {{ result.settlement }} mm</p>
+    {% endif %}
+    
+    <h2>Wykresy</h2>
+    <h3>Rozkład Parcia Gruntu</h3>
+    <img src="data:image/png;base64,{{ plot_base64 }}" alt="Rozkład Parcia Gruntu">
+    
+    <h3>Przekrój Poprzeczny Wykopu</h3>
+    <img src="data:image/png;base64,{{ cross_section_plot_url }}" alt="Przekrój Poprzeczny Wykopu">
+    
+    <h2>Warstwy Gruntu</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Warstwa</th>
+                <th>Grubość H<sub>i</sub> [m]</th>
+                <th>Ciężar γ<sub>i</sub> [kN/m³]</th>
+                <th>Ciężar γ<sub>sat_i</sub> [kN/m³]</th>
+                <th>Kąt tarcia φ<sub>i</sub> [°]</th>
+                <th>Spójność c<sub>i</sub> [kPa]</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for layer in soil_parameters %}
+            <tr>
+                <td>{{ layer.layer }}</td>
+                <td>{{ layer.H_i }}</td>
+                <td>{{ layer.gamma_i }}</td>
+                <td>{{ layer.gamma_sat_i }}</td>
+                <td>{{ layer.phi_i }}</td>
+                <td>{{ layer.c_i }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if graphJSON %}
+        <h2>Interaktywny Wykres</h2>
+        <div id="graph"></div>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <script>
+            var graphs = {{ graphJSON | safe }};
+            Plotly.newPlot('graph', graphs.data, graphs.layout);
+        </script>
+    {% endif %}
+    
+    <footer>
+        <p>Raport wygenerowany za pomocą aplikacji Obliczenia Szalunku Wykopu.</p>
+    </footer>
+</body>
+</html>
