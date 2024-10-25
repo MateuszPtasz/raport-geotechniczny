@@ -1,10 +1,19 @@
+/* Styl dla znaku wodnego z SVG */
 body::before {
-    content: "WODA";
+    content: "";
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 100px;
-    color: rgba(200, 200, 200, 0.3);
+    transform: translate(-50%, -50%);
+    width: 300px; /* Dostosuj rozmiar */
+    height: 300px; /* Dostosuj rozmiar */
+    background-image: url('images/watermark.svg');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+ 
     z-index: -1;
+    pointer-events: none;
 }
+
+

@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Obliczenia wykopu zabezpieczonego Szalunkiem Systemowym</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/watermark.css') }}">
+    
     <!-- Dodaj tutaj style i skrypty -->
     <!-- Plotly -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -337,15 +340,14 @@
 
             <!-- Przyciski do pobrania raportu -->
             
+            <!-- Przyciski do pobrania raportu -->
             <form action="{{ url_for('download_report') }}" method="post">
                 <input type="hidden" name="result" value='{{ result | tojson | safe }}'>
+                {% if plot_url %}
+                    <input type="hidden" name="plot_url" value="{{ plot_url }}">
+                {% endif %}
                 <input type="hidden" name="soil_parameters" value='{{ soil_parameters | tojson | safe }}'>
-                {% if plot_base64 %}
-                    <input type="hidden" name="plot_base64" value="{{ plot_base64 }}">
-                {% endif %}
-                {% if cross_section_plot_url %}
-                    <input type="hidden" name="cross_section_plot_url" value="{{ cross_section_plot_url }}">
-                {% endif %}
+                <input type="hidden" name="cross_section_plot_url" value="{{ cross_section_plot_url }}">
                 <!-- Dwa przyciski: z znakiem wodnym i bez -->
                 <button type="submit" name="watermark" value="yes" class="btn btn-secondary">Pobierz Raport PDF z Znakiem Wodnym</button>
                 <button type="button" id="download-no-watermark" class="btn btn-secondary">Pobierz Raport PDF bez Znaku Wodnego</button>
@@ -367,12 +369,9 @@
                             </div>
                             <div class="modal-body">
                                 <input type="hidden" name="result" value='{{ result | tojson }}'>
-                                
                                 <input type="hidden" name="cross_section_plot_url" value="{{ cross_section_plot_url }}">
                                 <input type="hidden" name="soil_parameters" value='{{ soil_parameters | tojson }}'>
-                                {% if plot_base64 %}
-                                    <input type="hidden" name="plot_base64" value="{{ plot_base64 }}">
-                                {% endif %}
+                                <input type="hidden" name="plot_url" value="{{ plot_url }}">
                                 <input type="hidden" name="watermark" value="no">
                                 <div class="form-group">
                                     <label for="password">Hasło:</label>
@@ -385,6 +384,7 @@
                             </div>
                         </div>
                     </form>
+                    
                 </div>
             </div>    
         </div>
@@ -580,13 +580,8 @@
             </script>
         </div>
         {% endif %}
-
-        <div class="plot">
-        {% if plot_base64 %}
-            <img src="data:image/png;base64,{{ plot_base64 }}" alt="Wykres rozkładu parcia gruntu" class="img-fluid">
-        {% else %}
-            <p>Brak wykresu parcia gruntu.</p>
-        {% endif %}
+                    
+                
         </div>
 
         

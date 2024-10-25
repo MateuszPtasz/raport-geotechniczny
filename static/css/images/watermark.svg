@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+    <!-- Okrąg -->
+    <circle cx="270" cy="250" r="15" stroke="black" stroke-width="5" fill="none" opacity="0.1"/>
+    <!-- Litera "C" -->
+    <text x="270" y="250" dominant-baseline="middle" text-anchor="middle" font-size="25" font-family="Arial, sans-serif" fill="black" opacity="0.1">C</text>
+    <!-- Dodatkowy Tekst -->
+    <text x="200" y="250" dominant-baseline="middle" text-anchor="middle" font-size="30" font-family="Arial, sans-serif" fill="black" opacity="0.1">PRB </text>
+    <text x="200" y="280" dominant-baseline="middle" text-anchor="middle" font-size="30" font-family="Arial, sans-serif" fill="black" opacity="0.1"> e-prb.pl</text>
+</svg>
+
