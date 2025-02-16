@@ -73,7 +73,7 @@ Mateusz Ptaszkowski ptaszkowski.mateusz@gmail.com
 
 MIT License
 
-Copyright (c) 2024 Mateusz Ptasznik
+Copyright (c) 2024 Mateusz Ptaszkowski Ptaszkowski.mateusz@gmail.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
