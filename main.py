@@ -7,11 +7,13 @@ import io
 import json
 import base64
 import logging
+import webbrowser
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+from flask import Flask, render_template, request, send_file, flash, redirect, url_for
 from flask import Flask, send_file, render_template, request, redirect, url_for, flash
 from calculations import (
     calculate_Ka, calculate_Ka_coulomb, calculate_Ka_terzaghi,
@@ -35,7 +37,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "PRB123"  # Zmień na silny, losowy klucz
 
 # Konfiguracja logowania
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Ładowanie listy haseł z zmiennej środowiskowej
 CORRECT_PASSWORDS = os.getenv("REPORT_PASSWORDS", "default_password").split(",")
@@ -285,12 +287,12 @@ def create_cross_section_plot(H_i, zw, H_total, q, d, theta, h_r, metoda_parcia,
     plt.close(fig)  # Zamknięcie wykresu, aby zwolnić pamięć
 
     return plot_url
-
+logging.debug("Przed render_template")
 @app.route('/docs')
 def docs():
     return render_template('docs.html')
 
-    
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = None
@@ -307,6 +309,7 @@ def index():
     NORMY_UZYTE = "PN-EN 1997-1:2008 Eurokod 7 – Projektowanie geotechniczne. Część 1: Zasady ogólne."
 
     if request.method == "POST":
+        logging.info("Odebrano żądanie POST")
         form_data = request.form.to_dict(flat=False)
         try:
             missing_fields = []
@@ -430,6 +433,7 @@ def index():
                 logging.debug(f"Processed Lists -> H_i: {H_i}, gamma_i: {gamma_i}, gamma_sat_i: {gamma_sat_i}, phi_i: {phi_i}, c_i: {c_i}")
 
             except Exception as e:
+                logging.error(f"Błąd: {e}", exc_info=True)
                 error = "Wystąpił błąd podczas przetwarzania danych warstw gruntu."
                 logging.error(f"Exception during list processing: {e}")
                 return render_template("index.html", error=error, form_data=form_data)
@@ -726,7 +730,7 @@ def index():
         layer_pressures = []
         soil_parameters = []
         error = None
-
+    logging.debug("Po render_template")
     return render_template(
         "index.html",
         result=result,
@@ -739,7 +743,7 @@ def index():
         layer_pressures=layer_pressures,
         soil_parameters=soil_parameters,
     )
-
+    logging.info("Uruchomiono aplikację")
 @app.route('/download_report', methods=['POST'])
 def download_report():
     try:
@@ -849,4 +853,6 @@ def download_report():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+     # Uruchom przeglądarkę automatycznie (opcjonalnie)
+        webbrowser.open('http://127.0.0.1:5001/')  # Otwórz w domyślnej przeglądarce
+        app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)))
