@@ -3,9 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Obliczenia wykopu zabezpieczonego Szalunkiem Systemowym</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/watermark.css') }}">
-    
     <!-- Dodaj tutaj style i skrypty -->
     <!-- Plotly -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -18,7 +15,6 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <style>
-        font-family: 'DejaVu Sans', sans-serif;
         .plot, .soil-parameters {
             width: 100%;
             max-width: 1120px;
@@ -44,7 +40,6 @@
             border: 1px solid #dee2e6;
             padding: 8px;
             text-align: center;
-            word-wrap: break-word; /* Dodane zawijanie tekstu */
         }
         .tab-pane th {
             background-color: #f8f9fa;
@@ -59,8 +54,6 @@
                 width: 100%;
             }
         }
-
-
     </style>
 </head>
 <body>
@@ -108,19 +101,19 @@
                 <h3>Dodatkowe parametry dla metody Coulomba:</h3>
                 <div class="form-group">
                     <label for="delta">Kąt tarcia gruntu o ścianę δ [°]:
-                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt tarcia gruntu względem ściany wykopu - brak danych pozostaw puste." style="cursor: pointer;"></i>
+                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt tarcia gruntu względem ściany wykopu." style="cursor: pointer;"></i>
                     </label>
                     <input type="number" name="delta" id="delta" class="form-control" step="0.1" min="0" max="90" value="0">
                 </div>
                 <div class="form-group">
                     <label for="beta">Kąt nachylenia ściany od pionu β [°]:
-                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt nachylenia ściany wykopu względem pionu - brak danych pozostaw puste." style="cursor: pointer;"></i>
+                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt nachylenia ściany wykopu względem pionu." style="cursor: pointer;"></i>
                     </label>
                     <input type="number" name="beta" id="beta" class="form-control" step="0.1" min="0" max="90" value="0">
                 </div>
                 <div class="form-group">
                     <label for="theta">Kąt nachylenia terenu θ [°]:
-                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt nachylenia terenu względem poziomu - brak danych pozostaw puste." style="cursor: pointer;"></i>
+                        <i class="fas fa-question-circle ml-1" data-toggle="popover" data-trigger="hover" data-content="Kąt nachylenia terenu względem poziomu." style="cursor: pointer;"></i>
                     </label>
                     <input type="number" name="theta" id="theta" class="form-control" step="0.1" min="0" max="90" value="0">
                 </div>
@@ -206,7 +199,7 @@
             </div>
 
             <button type="button" id="add-layer" class="btn btn-secondary">Dodaj warstwę</button>
-
+            
             <!-- Warunki gruntowo-wodne -->
             <h2 class="mt-4">Warunki gruntowo-wodne:</h2>
             <div class="form-group">
@@ -286,7 +279,7 @@
                 </label>
                 <input type="number" name="liczba_kotwien" id="liczba_kotwien" class="form-control" step="1" min="1" value="{{ form_data['liczba_kotwien'][0] if form_data and 'liczba_kotwien' in form_data else '' }}">
             </div>
-
+            
 
             <!-- Obciążenia zewnętrzne -->
             <h2 class="mt-4">Obciążenia zewnętrzne:</h2>
@@ -321,12 +314,12 @@
             <button type="submit" class="btn btn-primary">Oblicz</button>
         </form>
 
-        <!-- Przyciski do pobrania raportu -->
+        <!-- Sekcja Wyników -->
         {% if result %}
         <div class="result mt-4">
             <h2>Wyniki:</h2>
-            <p>Łączne jednostkowe parcie gruntu σₕ: {{ result.sigma_h_total }} kPa</p>
-            <p>Maksymalny moment zginający M_max: {{ result.M_max }} kNm</p>
+            <p>Łączne jednostkowe parcie gruntu σ<sub>h</sub>: {{ result.sigma_h_total }} kPa</p>
+            <p>Maksymalny moment zginający M<sub>max</sub>: {{ result.M_max }} kNm</p>
             <p>Wskaźnik wytrzymałości przekroju W: {{ result.W }} m³</p>
             <p>
                 Warunek wytrzymałości na zginanie:
@@ -339,23 +332,21 @@
             <p>Osiadanie gruntu spowodowane odwodnieniem: {{ result.settlement }} mm</p>
 
             <!-- Przyciski do pobrania raportu -->
-            
-            <!-- Przyciski do pobrania raportu -->
             <form action="{{ url_for('download_report') }}" method="post">
-                <input type="hidden" name="result" value='{{ result | tojson | safe }}'>
-                {% if plot_url %}
-                    <input type="hidden" name="plot_url" value="{{ plot_url }}">
+                <input type="hidden" name="result" value='{{ result | tojson }}'>
+                {% if graphJSON %}
+                    <input type="hidden" name="plot_url" value='{{ graphJSON | tojson }}'>
                 {% endif %}
-                <input type="hidden" name="soil_parameters" value='{{ soil_parameters | tojson | safe }}'>
                 <input type="hidden" name="cross_section_plot_url" value="{{ cross_section_plot_url }}">
+                <input type="hidden" name="soil_parameters" value='{{ soil_parameters | tojson }}'>
+                {% if plot_base64 %}
+                    <input type="hidden" name="plot_base64" value="{{ plot_base64 }}">
+                {% endif %}
                 <!-- Dwa przyciski: z znakiem wodnym i bez -->
                 <button type="submit" name="watermark" value="yes" class="btn btn-secondary">Pobierz Raport PDF z Znakiem Wodnym</button>
                 <button type="button" id="download-no-watermark" class="btn btn-secondary">Pobierz Raport PDF bez Znaku Wodnego</button>
             </form>
-
-            
-            
-
+       
            <!-- Modal do wprowadzania hasła -->
            <div class="modal fade" id="passwordModal" tabindex="-1" role="dialog" aria-labelledby="passwordModalLabel" aria-hidden="true">
                 <div class="modal-dialog" role="document">
@@ -369,9 +360,14 @@
                             </div>
                             <div class="modal-body">
                                 <input type="hidden" name="result" value='{{ result | tojson }}'>
+                                {% if graphJSON %}
+                                    <input type="hidden" name="plot_url" value='{{ graphJSON | tojson }}'>
+                                {% endif %}
                                 <input type="hidden" name="cross_section_plot_url" value="{{ cross_section_plot_url }}">
                                 <input type="hidden" name="soil_parameters" value='{{ soil_parameters | tojson }}'>
-                                <input type="hidden" name="plot_url" value="{{ plot_url }}">
+                                {% if plot_base64 %}
+                                    <input type="hidden" name="plot_base64" value="{{ plot_base64 }}">
+                                {% endif %}
                                 <input type="hidden" name="watermark" value="no">
                                 <div class="form-group">
                                     <label for="password">Hasło:</label>
@@ -384,7 +380,6 @@
                             </div>
                         </div>
                     </form>
-                    
                 </div>
             </div>    
         </div>
@@ -412,6 +407,9 @@
                             <li class="nav-item">
                                 <a class="nav-link" id="methods-tab" data-toggle="tab" href="#methods" role="tab" aria-controls="methods" aria-selected="false">Opis Metod Obliczeniowych</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="full-doc-tab" data-toggle="tab" href="#full-doc" role="tab" aria-controls="full-doc" aria-selected="false">Pełna Dokumentacja</a>
+                            </li>
                         </ul>
 
                         <!-- Tab panes -->
@@ -433,7 +431,7 @@
                                 <!-- Zawartość zakładki Opis Warstw -->
                                 <h4>Opis Warstw</h4>
                                 <p>Warstwy gruntu są definiowane zgodnie z normą <strong>PN-B-03020:1981</strong> i służą do precyzyjnych obliczeń wytrzymałości wykopów. Poniżej znajduje się opis poszczególnych typów gruntów wraz z ich charakterystycznymi właściwościami:</p>
-
+                                
                                 <table class="table table-bordered">
                                     <thead>
                                         <tr>
@@ -504,7 +502,7 @@
                                         </tr>
                                     </tbody>
                                 </table>
-
+                                
                                 <p>Poprawne zdefiniowanie tych parametrów umożliwia precyzyjne modelowanie warunków gruntowych i dokładne obliczenia wytrzymałości wykopów. Wybór odpowiedniego typu gruntu oraz jego właściwości jest kluczowy dla zapewnienia bezpieczeństwa i stabilności konstrukcji szalunkowej.</p>
                             </div>
                             <div class="tab-pane fade" id="methods" role="tabpanel" aria-labelledby="methods-tab">
@@ -518,6 +516,44 @@
                                     <li><strong>Metoda Rankine'a</strong>: Domyślna metoda obliczeń parcia czynnego, która jest uproszczoną wersją teorii Coulomba, zakładającą, że teren jest poziomy i że nie ma tarcia między gruntem a ścianą wykopu.</li>
                                 </ul>
                                 <p>Wybór odpowiedniej metody zależy od specyfiki projektu i warunków gruntowych. Aplikacja pozwala na wybór metody, która najlepiej odpowiada realnym warunkom terenowym, co umożliwia precyzyjne i bezpieczne projektowanie wykopów.</p>
+                            </div>
+                            <div class="tab-pane fade" id="full-doc" role="tabpanel" aria-labelledby="full-doc-tab">
+                                <h4>Pełna Dokumentacja</h4>
+                                <p>
+                                    Poniżej znajduje się link do pełnej dokumentacji technicznej aplikacji:
+                                </p>
+                                <a href="{{ url_for('docs') }}" class="btn btn-primary">Otwórz Dokumentację</a>
+                            
+                                <hr>  <!-- Linia oddzielająca -->
+                            
+                                <h5>Autor</h5>
+                                <p>
+                                    Mateusz Ptaszkowski<br>
+                                    E-mail: <a href="mailto:ptaszkowski.mateusz@gmail.com">ptaszkowski.mateusz@gmail.com</a>
+                                </p>
+                            
+                                <h5>Repozytorium</h5>
+                                <p>
+                                    <a href="https://github.com/MateuszPtasz/raport-geotechniczny" target="_blank">GitHub</a>
+                                </p>
+                            
+                                <h5>Strona Firmy</h5>
+                                <p>
+                                    <a href="http://e-prb.pl" target="_blank">e-prb.pl</a>
+                                </p>
+                            
+                                 <h5>Facebook</h5>
+                                <p>
+                                    <a href="https://www.facebook.com/profile.php?id=100057690396867" target="_blank">Facebook</a>
+                                </p>
+                            
+                                <h5>O Nas</h5>
+                                <p>
+                                    Tworzymy aplikacje internetowe, które wspierają pracę inżynierów, umożliwiając szybką i efektywną analizę
+                                    projektów bez konieczności korzystania z zaawansowanych, specjalistycznych programów. Naszym celem jest
+                                    dostarczanie prostych w obsłudze, a jednocześnie precyzyjnych narzędzi, które ułatwiają codzienne zadania
+                                    projektowe.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -540,32 +576,30 @@
             </div>
             <div class="col-md-6 soil-parameters">
                 <h2>Parametry gruntów:</h2>
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                        <tr>
-                            <th>Warstwa</th>
-                            <th>H<sub>i</sub> [m]</th>
-                            <th>γ<sub>i</sub> [kN/m³]</th>
-                            <th>γ_sat,i [kN/m³]</th>
-                            <th>φ<sub>i</sub> [°]</th>
-                            <th>c<sub>i</sub> [kPa]</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for soil in soil_parameters %}
-                        <tr>
-                            <td>{{ soil.layer }}</td>
-                            <td>{{ soil.H_i }}</td>
-                            <td>{{ soil.gamma_i }}</td>
-                            <td>{{ soil.gamma_sat_i }}</td>
-                            <td>{{ soil.phi_i }}</td>
-                            <td>{{ soil.c_i }}</td>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <table class="table table-bordered">
+                    <thead>
+                    <tr>
+                        <th>Warstwa</th>
+                        <th>H<sub>i</sub> [m]</th>
+                        <th>γ<sub>i</sub> [kN/m³]</th>
+                        <th>γ<sub>sat,i</sub> [kN/m³]</th>
+                        <th>φ<sub>i</sub> [°]</th>
+                        <th>c<sub>i</sub> [kPa]</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for soil in soil_parameters %}
+                    <tr>
+                        <td>{{ soil.layer }}</td>
+                        <td>{{ soil.H_i }}</td>
+                        <td>{{ soil.gamma_i }}</td>
+                        <td>{{ soil.gamma_sat_i }}</td>
+                        <td>{{ soil.phi_i }}</td>
+                        <td>{{ soil.c_i }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -573,20 +607,23 @@
         {% if graphJSON %}
         <div class="plot mt-4">
             <h2>Wykres rozkładu parcia gruntu:</h2>
-            <div id="pressure-plot" style="width: 100%; height: 600px;"></div> <!-- Ustawiono wysokość -->
+            <div id="pressure-plot"></div>
             <script>
                 var plot_data = {{ graphJSON | safe }};
-                Plotly.newPlot('pressure-plot', plot_data.data, plot_data.layout, {responsive: true});
+                Plotly.newPlot('pressure-plot', plot_data.data, plot_data.layout);
             </script>
         </div>
         {% endif %}
-                    
-                
+
+        <!-- Statyczny wykres do PDF -->
+        <div class="plot">
+        {% if plot_base64 %}
+            <img src="data:image/png;base64,{{ plot_base64 }}" alt="Wykres rozkładu parcia gruntu">
+        {% else %}
+            <p>Brak wykresu parcia gruntu.</p>
+        {% endif %}
         </div>
-
-        
-
-
+      
         {% if error %}
         <div class="error mt-4" style="color: red;">
             <p>{{ error }}</p>
@@ -688,7 +725,7 @@
         </script>
 
         <!-- Skrypt do obsługi modalu -->
-
+        
         <script>
             $(document).ready(function(){
                 $('#download-no-watermark').click(function(){
@@ -701,7 +738,6 @@
                     trigger: 'hover'
                 });
             });
-
         </script>
 
         <!-- Walidacja formularza -->
@@ -715,7 +751,7 @@
                     var gamma_i = parseFloat(layer.querySelector('input[name="gamma_i[]"]').value);
                     var phi_i = parseFloat(layer.querySelector('input[name="phi_i[]"]').value);
                     var c_i = parseFloat(layer.querySelector('input[name="c_i[]"]').value);
-
+            
                     if (H_i <= 0 || isNaN(H_i)) {
                         alert('Grubość warstwy H_i musi być większa niż 0.');
                         return false;

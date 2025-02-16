@@ -286,6 +286,11 @@ def create_cross_section_plot(H_i, zw, H_total, q, d, theta, h_r, metoda_parcia,
 
     return plot_url
 
+@app.route('/docs')
+def docs():
+    return render_template('docs.html')
+
+    
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = None

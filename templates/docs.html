@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentacja Techniczna</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+     /*  mozna przeniesc do style.css */
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 2em;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        h2 {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.5em;
+            margin-top: 2em;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 1em;
+            overflow-x: auto;
+        }
+         ul li {
+            margin-bottom: 0.5em; /* Odstęp między elementami listy */
+        }
+
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .param-table th, .param-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .param-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dokumentacja Techniczna</h1>
+
+    <h2>Opis Programu</h2>
+    <p>
+        Aplikacja służy do obliczania stateczności i nośności wykopów zabezpieczonych szalunkiem systemowym.  Aplikacja umożliwia przeliczanie, czy dana komora (szalunek) typu ciężkiego wytrzyma obciążenia i będzie bezpieczna, oraz czy obciążenie poruszające się w pobliżu wykopu nie spowoduje zagrożenia dla ludzi wewnątrz.
+    </p>
+    <p>
+       Aplikacja pozwala na:
+    </p>
+        <ul>
+            <li>Wprowadzenie danych geologicznych dla wielu warstw gruntu (grubość, ciężar objętościowy, kąt tarcia wewnętrznego, spójność).</li>
+            <li>Wprowadzenie danych dotyczących obciążenia naziomu (wielkość, odległość od krawędzi wykopu).</li>
+            <li>Wprowadzenie danych dotyczących poziomu wody gruntowej.</li>
+            <li>Wprowadzenie parametrów szalunku (szerokość wykopu, wysokość montażu rozpory, długość blatu szalunkowego, granica plastyczności stali, współczynnik bezpieczeństwa materiału).</li>
+	    <li>Wprowadzenie parametrów opcjonalnych, takich jak współczynnik porowatości, wskaźnik konsolidacji, i gróbośc warstwy konsolidacyjnej.</li>
+            <li>Wybór jednej z czterech metod obliczeniowych parcia gruntu:
+                <ul>
+                    <li><strong>Coulomb:</strong> Uwzględnia kąt tarcia między gruntem a ścianą (δ), kąt nachylenia ściany (β) i kąt nachylenia terenu (θ).  Jest to najbardziej ogólna metoda.</li>
+                    <li><strong>Terzaghi-Peck:</strong> Modyfikacja teorii Coulomba, uwzględniająca korekty dla gruntów spoistych.</li>
+                    <li><strong>Tschebotarioff:</strong>  Uwzględnia wpływ odległości obciążenia naziomu od krawędzi wykopu poprzez współczynnik redukcyjny.</li>
+                    <li><strong>Rankine:</strong>  Uproszczona metoda, zakładająca brak tarcia grunt-ściana (δ=0) i poziomy teren (θ=0).</li>
+                </ul>
+            </li>
+            <li>Obliczenie całkowitego parcia gruntu na ścianę szalunku.</li>
+            <li>Obliczenie maksymalnego momentu zginającego działającego na blat szalunkowy.</li>
+            <li>Sprawdzenie warunku nośności na zginanie (czy naprężenia w szalunku nie przekraczają dopuszczalnych wartości).</li>
+            <li>Obliczenie osiadania gruntu (opcjonalnie, jeśli podano dodatkowe parametry).</li>
+            <li>Wygenerowanie wykresu rozkładu parcia gruntu wzdłuż głębokości wykopu.</li>
+            <li>Wygenerowanie raportu PDF z wynikami obliczeń i wykresem.</li>
+        </ul>
+
+    <h2>Algorytmy i Wzory</h2>
+     <p>Kluczowe algorytmy i wzory używane w aplikacji:</p>
+
+        <h3>Współczynnik Parcia Czynnego (Ka)</h3>
+           <p>Współczynnik parcia czynnego (Ka) jest obliczany na podstawie wybranej metody:</p>
+        <ul>
+            <li><strong>Rankine:</strong></li>
+            <pre>Ka = tan²(π/4 - φ/2)</pre>
+
+            <li><strong>Coulomb:</strong></li>
+            <pre>Ka = [sin(φ + δ) * sin(φ - β - θ)] / [cos(δ + θ) * cos(β) * (1 + √((sin(φ + δ) * sin(φ - β - θ)) / (cos(δ + θ) * cos(β))))²]</pre>
+
+            <li><strong>Terzaghi:</strong></li>
+              <pre> Ka = (1 - sin(φ)) / (1 + sin(φ)) </pre>
+	      <p>Metoda Terzaghiego-Pecka modyfikuje wartość Ka dla gruntów spoistych. Modyfikacja opiera się o dane empiryczne, w programie  przyjmowane jest podejście Rankine'a, </p>
+
+            <li><strong>Tschebotarioff:</strong></li>
+             <pre>Ka = (1 - sin(φ)) / (2 * (1 + sin(φ)))</pre>
+
+        </ul>
+
+          <p>Gdzie:</p>
+        <table class="param-table">
+            <tr><th>Symbol</th><th>Opis</th></tr>
+            <tr><td>φ</td><td>Kąt tarcia wewnętrznego gruntu [°]</td></tr>
+            <tr><td>δ</td><td>Kąt tarcia gruntu o ścianę [°]</td></tr>
+            <tr><td>β</td><td>Kąt nachylenia ściany od pionu [°]</td></tr>
+            <tr><td>θ</td><td>Kąt nachylenia terenu [°]</td></tr>
+        </table>
+
+        <h3>Parcie Gruntu</h3>
+        <p>Parcie gruntu na głębokości <em>z</em> jest obliczane z uwzględnieniem poziomu wody gruntowej:</p>
+                <ul>
+                    <li><strong>Powyżej zwierciadła wody gruntowej (z ≤ zw):</strong></li>
+                     <pre>σh = Ka * γ * z - 2 * c * √Ka</pre>
+                    <li><strong>Poniżej zwierciadła wody gruntowej (z > zw):</strong></li>
+                    <pre>σh = Ka * (γ * zw + (γsat - γw) * (z - zw)) - 2 * c * √Ka</pre>
+        </ul>
+
+
+	 <p>Gdzie:</p>
+        <table class="param-table">
+            <tr><th>Symbol</th><th>Opis</th></tr>
+            <tr><td>Ka</td><td>Współczynnik parcia czynnego [-]</td></tr>
+            <tr><td>γ</td><td>Ciężar objętościowy gruntu [kN/m³]</td></tr>
+            <tr><td>γsat</td><td>Ciężar objętościowy gruntu nasyconego wodą [kN/m³]</td></tr>
+            <tr><td>γw</td><td>Ciężar objętościowy wody (9.81 kN/m³)</td></tr>
+            <tr><td>z</td><td>Głębokość [m]</td></tr>
+            <tr><td>zw</td><td>Głębokość zwierciadła wody gruntowej [m]</td></tr>
+            <tr><td>c</td><td>Spójność gruntu [kPa]</td></tr>
+        </table>
+
+        <h3>Wpływ Obciążenia Naziomu</h3>
+         <p>Dodatkowe parcie od obciążenia naziomu (<em>q</em>) jest obliczane z uwzględnieniem współczynnika redukcyjnego (<em>reduction</em>):</p>
+
+          <pre>σh_q = Ka * q * reduction</pre>
+           <p>Współczynnik redukcyjny jest funkcją odległości obciążenia od krawędzi wykopu (<em>d</em>) i głębokości (<em>z</em>):</p>
+           <pre>
+reduction = 1  gdy  d/z ≤ 0
+reduction = 1-n/2   gdy 0 < d/z < 2
+reduction = 0 gdy d/z ≥ 2
+n = d/z
+
+           </pre>
+	    <p>Gdzie:</p>
+	     <table class="param-table">
+            <tr><th>Symbol</th><th>Opis</th></tr>
+            <tr><td>Ka</td><td>Współczynnik parcia czynnego [-]</td></tr>
+            <tr><td>q</td><td>Obciążenie naziomu [kPa]</td></tr>
+            <tr><td>reduction</td><td>Współczynnik redukcyjny [-]</td></tr>
+        </table>
+
+       <h3>Całkowite Parcie Gruntu</h3>
+        <p>Całkowite parcie gruntu (<em>σh_total</em>) jest obliczane jako suma parcia od poszczególnych warstw gruntu, z uwzględnieniem obciążenia naziomu i wody gruntowej. Całkowite parcie jest obliczane, sumując iloczyny średniego parcia w danej warstwie i grubości tej warstwy.</p>
+
+        <h3>Maksymalny Moment Zginający</h3>
+        <p>Maksymalny moment zginający (<em>M_max</em>) jest obliczany na podstawie całkowitego parcia gruntu, wysokości wykopu (<em>H</em>) i liczby kotew (<em>liczba_kotwien</em>):
+	 <pre>
+	M_max = (σh_total * H) / 6  dla ściany wolnostojącej
+	M_max = (σh_total * H) / 8  dla ściany z 1 kotwą
+	M_max = (σh_total * H) / 10 dla ściany z 2 kotwami
+	M_max = (σh_total * H) / (6 + liczba_kotwien * 2)  dla większej liczby kotwi
+	 </pre>
+	</p>
+        <h3>Sprawdzenie Nośności na Zginanie</h3>
+          <p>Warunek nośności na zginanie jest sprawdzany poprzez porównanie naprężeń (σ) w szalunku z dopuszczalnymi naprężeniami (fy / γM):</p>
+	<pre>σ = M_max / W  ≤  fy / γM</pre>
+
+	<p>Gdzie:</p>
+	<table class="param-table">
+            <tr><th>Symbol</th><th>Opis</th></tr>
+            <tr><td>Mmax</td><td>Maksymalny moment zginający [kN·m]</td></tr>
+            <tr><td>W</td><td>Wskaźnik wytrzymałości przekroju [m³]  (dla przekroju prostokątnego: W = b*t²/6)</td></tr>
+            <tr><td>fy</td><td>Granica plastyczności stali [MPa]</td></tr>
+            <tr><td>γM</td><td>Współczynnik bezpieczeństwa materiału [-]</td></tr>
+        </table>
+
+
+    <h2>Użyte Normy</h2>
+    <ul>
+        <li>PN-EN 1997-1:2008 Eurokod 7 – Projektowanie geotechniczne. Część 1: Zasady ogólne.</li>
+        <li>PN-EN 1992-1-1:2008 Eurokod 2 – Projektowanie konstrukcji betonowych. Część 1-1: Reguły ogólne i reguły dla budynków.</li>
+        <li>PN-EN 1993-1-1:2005 Eurokod 3 – Projektowanie konstrukcji stalowych. Część 1-1: Reguły ogólne i reguły dla budynków.</li>
+        <li>PN-B-03155:2011 Projektowanie i wykonawstwo konstrukcji betonowych.</li>
+        <li>PN-B-03020:1981 Metody obliczeń wytrzymałościowych gruntu.</li>
+    </ul>
+
+    <h2>Licencja</h2>
+    
+MIT License
+
+Copyright (c) 2024 Mateusz Ptaszkowski ptaszkowski.mateusz@gmail.com
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+</body>
+</html>
